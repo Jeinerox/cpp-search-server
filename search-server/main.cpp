@@ -67,6 +67,7 @@ private:
     bool IsStopWord(const string& word) const { return stop_words_.count(word) > 0; }
     vector<string> SplitIntoWordsNoStop(const string& text) const;
     Query ParseQuery(const string& text) const;
+    double CalcIDF(int document_count_, int document_count_with_word) const;
     vector<Document> FindAllDocuments(const Query& query_words) const;
 };
 
@@ -82,11 +83,11 @@ void SearchServer::AddDocument(int document_id, const string& document) {
     const vector<string> words = SplitIntoWordsNoStop(document);
 
     for (const auto& word : words) {
-        word_to_document_freqs_[word][document_id] = (double)count(words.begin(), words.end(), word) / words.size();
+        word_to_document_freqs_[word][document_id] += 1.0 / words.size();
     }
 
-    /*count_if(words.begin(), words.end(), [&, this](string word) {
-       word_to_document_freqs_[word][document_id] = (double)count(words.begin(), words.end(), word) / words.size();
+    /*count_if(words.begin(), words.end(), [&, this, document_id](string word) {
+       word_to_document_freqs_[word][document_id] += 1.0 / words.size();
        return 0;
        });*/ //ну уж очень хотелось куда-то count_if влепить, главное не забыть при этом экземпляр класса захватить))
        // передача int по ссылке - не баг, а фича B)
@@ -122,9 +123,9 @@ SearchServer::Query SearchServer::ParseQuery(const string& text) const {
     for (const string& word : SplitIntoWordsNoStop(text)) {
         if (word[0] == '-') {
             string withoutMinus = word;
-            withoutMinus.erase(0, 1);
+            withoutMinus.erase(0, 1); //.erase(1) сделает диаметрально противоположное действие: оставит лишь первый символ, остальные удалит)
             if (!stop_words_.count(withoutMinus))
-                (query_words.minusQuery).insert(withoutMinus);
+                query_words.minusQuery.insert(withoutMinus);
         }
         else
             (query_words.plusQuery).insert(word);
@@ -133,18 +134,23 @@ SearchServer::Query SearchServer::ParseQuery(const string& text) const {
     return query_words;
 }
 
+double SearchServer::CalcIDF(int document_count_, int document_count_with_word) const
+{
+    return log(static_cast<double>(document_count_) / document_count_with_word);
+}
+
+
 vector<Document> SearchServer::FindAllDocuments(const Query& query_words) const {
     map<int, double> documents_rel;
     map<int, double> id_freq;
     for (const auto& word : query_words.plusQuery) {
         if (word_to_document_freqs_.count(word)) {
-            id_freq = word_to_document_freqs_.at(word);
+            double idf = CalcIDF(document_count_, word_to_document_freqs_.at(word).size());
             for (const auto& [id, tf] : word_to_document_freqs_.at(word)) {
-                documents_rel[id] += tf * log((double)document_count_ / id_freq.size());
+                documents_rel[id] += tf * idf;
             }
         }
     }
-    id_freq.clear();
     for (const auto& word : query_words.minusQuery) {
         if (word_to_document_freqs_.count(word))
             for (const auto& id : word_to_document_freqs_.at(word))
@@ -152,7 +158,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query_words) const 
     }
     vector<Document> matched_documents;
     for (const auto& [id, rel] : documents_rel)
-        matched_documents.push_back({ id, (double)rel });
+        matched_documents.push_back({ id, rel });
 
     return matched_documents;
 }
