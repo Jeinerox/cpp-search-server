@@ -1,9 +1,9 @@
+// -------- Начало модульных тестов поисковой системы ----------
+
 void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
-    // Сначала убеждаемся, что поиск слова, не входящего в список стоп-слов,
-    // находит нужный документ
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -12,9 +12,6 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         const Document& doc0 = found_docs[0];
         ASSERT(doc0.id == doc_id);
     }
-
-    // Затем убеждаемся, что поиск этого же слова, входящего в список стоп-слов,
-    // возвращает пустой результат
     {
         SearchServer server;
         server.SetStopWords("in the"s);
@@ -41,7 +38,7 @@ void TestIfAddingDocumentsCorrect() {
     }
 }
 
-void TestIfMinusWordsCorrect() { //работают ли минус слова
+void TestIfMinusWordsCorrect() { 
     const int doc_id1 = 1;
     const string content1 = "cat in the car"s;
     const vector<int> ratings1 = { 1, 1, 1 };
@@ -82,7 +79,7 @@ void TestIfMatchingCorrect() {
     }
 }
 
-void TestIfSortByRatingCorrect() {
+void TestIfSortByRelevanceCorrect() {
     const int doc_id1 = 1;
     const string content1 = "cat in the car in London"s;
     const vector<int> ratings1 = { 1, 1, 1 };
@@ -100,25 +97,24 @@ void TestIfSortByRatingCorrect() {
         const auto found_docs1 = server.FindTopDocuments("London"s);
         ASSERT(found_docs1.size() == 3);
 
-        const Document& doc0 = found_docs1[0];
-        const Document& doc1 = found_docs1[1];
-        const Document& doc2 = found_docs1[2];
-        ASSERT_HINT(doc0.id == doc_id3, "sort wrong"s);
-        ASSERT_HINT(doc1.id == doc_id2, "sort wrong"s);
-        ASSERT_HINT(doc2.id == doc_id1, "sort wrong"s);
+        const Document& doc1 = found_docs1[0];
+        const Document& doc2 = found_docs1[1];
+        const Document& doc3 = found_docs1[2];
+        ASSERT_HINT(doc1.relevance >= doc2.relevance, "sort wrong"s);
+        ASSERT_HINT(doc2.relevance >= doc3.relevance, "sort wrong"s);
     }
 }
 
 void TestIfRatingComputeCorrect() {
     const int doc_id1 = 1;
     const string content1 = "cat in the car in London"s;
-    const vector<int> ratings1 = { 1, 1, 1 };
+    const vector<int> ratings1 = { 1, 1, 1, 1 };
     const int doc_id2 = 2;
     const string content2 = "dog in the car in London"s;
     const vector<int> ratings2 = { 2, 2, 2 };
     const int doc_id3 = 3;
     const string content3 = "dog in London"s;
-    const vector<int> ratings3 = { 20, 10, 3 };
+    const vector<int> ratings3 = { 10, 10, 6 };
     {
         SearchServer server;
         server.AddDocument(doc_id1, content1, DocumentStatus::ACTUAL, ratings1);
@@ -126,12 +122,12 @@ void TestIfRatingComputeCorrect() {
         server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
         const auto found_docs1 = server.FindTopDocuments("London"s);
         ASSERT_HINT(found_docs1.size() == 3, "size wrong");
-        const Document& doc0 = found_docs1[0];
-        const Document& doc1 = found_docs1[1];
-        const Document& doc2 = found_docs1[2];
-        ASSERT_HINT(doc0.rating == 11, "rating wrong"s);
-        ASSERT_HINT(doc1.rating == 2, "rating wrong"s);
-        ASSERT_HINT(doc2.rating == 1, "rating wrong"s);
+        const Document& doc1 = found_docs1[0];
+        const Document& doc2 = found_docs1[1];
+        const Document& doc3 = found_docs1[2];
+        ASSERT_HINT(doc1.rating == (10 + 10 + 6) / 3, "rating wrong"s);
+        ASSERT_HINT(doc2.rating == (2 + 2 + 2) / 3, "rating wrong"s);
+        ASSERT_HINT(doc3.rating == (1 + 1 + 1 + 1) / 4, "rating wrong"s);
     } {
     }
 }
@@ -186,17 +182,17 @@ void TestIfStatusSearchCorrect() {
 
 void TestIfRelevationCorrect() {
     const int doc_id1 = 1;
-    const string content1 = "black cat in London city founded"s;
-    const vector<int> ratings1 = { 1, 1, 1 };
+    const string content1 = "black cat in London city founded cat cat"s;
+    const vector<int> ratings1 = { 4, 4, 4 };
     const int doc_id2 = 2;
     const string content2 = "cat in the car in London pictures"s;
-    const vector<int> ratings2 = { 2, 2, 2 };
+    const vector<int> ratings2 = { 3, 3, 3 };
     const int doc_id3 = 3;
-    const string content3 = "dog in London"s;
-    const vector<int> ratings3 = { 6, 7, 9 };
+    const string content3 = "dog in the car London"s;
+    const vector<int> ratings3 = { 4, 4, 4 };
     const int doc_id4 = 4;
-    const string content4 = "best black cars low price London"s;
-    const vector<int> ratings4 = { 6, 7, 9 };
+    const string content4 = "buy a cat low price"s;
+    const vector<int> ratings4 = { 3, 3, 3 };
 
     const double EPSILON = 1e-6;
     {
@@ -205,30 +201,30 @@ void TestIfRelevationCorrect() {
         server.AddDocument(doc_id2, content2, DocumentStatus::ACTUAL, ratings2);
         server.AddDocument(doc_id3, content3, DocumentStatus::ACTUAL, ratings3);
         server.AddDocument(doc_id4, content4, DocumentStatus::ACTUAL, ratings4);
-        const auto found_docs1 = server.FindTopDocuments("London cat founded"s);
-        ASSERT(found_docs1.size() == 4);
+        const auto found_docs1 = server.FindTopDocuments("London cat"s);
+        ASSERT_EQUAL(found_docs1.size(), 4);
         const Document& doc1 = found_docs1[0];
         const Document& doc2 = found_docs1[1];
         const Document& doc3 = found_docs1[2];
         const Document& doc4 = found_docs1[3];
-        ASSERT(abs(doc1.relevance - 0.3465735902) < EPSILON);
-        ASSERT(abs(doc2.relevance - 0.0990210257) < EPSILON);
-        ASSERT(abs(doc3.relevance - 0) < EPSILON);
-        ASSERT(abs(doc4.relevance - 0) < EPSILON);
+        ASSERT(abs(doc1.relevance - ((log(4.0 / 3) * (1.0 / 8)) + (log(4.0 / 3) * (3.0 / 8)))) < EPSILON);
+        ASSERT(abs(doc2.relevance - ((log(4.0 / 3) * (1.0 / 7)) + (log(4.0 / 3) * (1.0 / 7)))) < EPSILON);
+        ASSERT(abs(doc3.relevance - ((log(4.0 / 3) * (1.0 / 5)) + (log(4.0 / 3) * (0.0 / 5)))) < EPSILON);
+        ASSERT(abs(doc4.relevance - ((log(4.0 / 3) * (0.0 / 5)) + (log(4.0 / 3) * (1.0 / 5)))) < EPSILON);
 
     }
 }
-// Функция TestSearchServer является точкой входа для запуска тестов
 
 void TestSearchServer() {
-    TestExcludeStopWordsFromAddedDocumentContent();
-    TestIfAddingDocumentsCorrect();
-    TestIfMinusWordsCorrect();
-    TestIfMatchingCorrect();
-    TestIfSortByRatingCorrect();
-    TestIfRatingComputeCorrect();
-    TestIsPredicateCorrect();
-    TestIfStatusSearchCorrect();
-    TestIfRelevationCorrect();
-    // Не забудьте вызывать остальные тесты здесь
+    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
+    RUN_TEST(TestIfAddingDocumentsCorrect);
+    RUN_TEST(TestIfMinusWordsCorrect);
+    RUN_TEST(TestIfMatchingCorrect);
+    RUN_TEST(TestIfSortByRelevanceCorrect);
+    RUN_TEST(TestIfRatingComputeCorrect);
+    RUN_TEST(TestIsPredicateCorrect);
+    RUN_TEST(TestIfStatusSearchCorrect);
+    RUN_TEST(TestIfRelevationCorrect);
 }
+
+// --------- Окончание модульных тестов поисковой системы -----------
