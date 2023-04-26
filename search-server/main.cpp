@@ -105,15 +105,13 @@ public:
 
     void AddDocument(int document_id, const string& document, DocumentStatus status,
         const vector<int>& ratings) {
-        if (document_id < 0 or documents_.count(document_id)) {
-            throw invalid_argument("The ID of the document being added is invalid");
+        if (document_id < 0) {
+            throw invalid_argument("ID < 0");
+        }
+        if (documents_.count(document_id)) {
+            throw invalid_argument("ID already exist");
         }
         const vector<string> words = SplitIntoWordsNoStop(document);
-        for (const auto& word : words) {
-            if (!IsValidWord(word)) { //(word[0] == '-') or  (word.empty()) or
-                throw invalid_argument("The document contains a special character");
-            }
-        }
 
         documents_ids_.push_back(document_id);
         const double inv_word_count = 1.0 / words.size();
@@ -130,13 +128,8 @@ public:
             throw invalid_argument("A query cannot consist solely of negative words");
         }
 
-        for (const auto& plus : query.plus_words) {
-            if (!IsValidWord(plus)) {
-                throw invalid_argument("The query contains a special character");
-            }
-        }
         for (const auto& minus : query.minus_words) {
-            if ((minus[0] == '-') || (minus.empty()) || !IsValidWord(minus)) {
+            if ((minus[0] == '-') || (minus.empty())) {
                 throw invalid_argument("Problem with the number of dashes in the query");
             }
         }
@@ -179,9 +172,6 @@ public:
 
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
-            if (!IsValidWord(word))
-                throw invalid_argument("Problem with the number of dashes in the query");
-
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -191,7 +181,7 @@ public:
         }
         for (const string& word : query.minus_words) {
 
-            if ((word[0] == '-') || (word.empty()) || !IsValidWord(word)) {
+            if ((word[0] == '-') || (word.empty())) {
                 throw invalid_argument("Problem with the number of dashes in the query");
             }
 
@@ -229,6 +219,8 @@ private:
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
+            if (!IsValidWord(word))
+                throw invalid_argument("Text contains a special character");
             if (!IsStopWord(word)) {
                 words.push_back(word);
             }
@@ -256,6 +248,8 @@ private:
 
 
     QueryWord ParseQueryWord(string text) const {
+        if (!IsValidWord(text))
+            throw invalid_argument("Text contains a special character");
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
@@ -327,3 +321,4 @@ private:
     }
 };
 
+int main() {}
