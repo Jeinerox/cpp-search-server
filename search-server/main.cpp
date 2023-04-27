@@ -124,15 +124,7 @@ public:
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
         const Query query = ParseQuery(raw_query);
-        if (query.plus_words.empty() and !query.minus_words.empty()) {
-            throw invalid_argument("A query cannot consist solely of negative words");
-        }
-
-        for (const auto& minus : query.minus_words) {
-            if ((minus[0] == '-') || (minus.empty())) {
-                throw invalid_argument("Problem with the number of dashes in the query");
-            }
-        }
+        
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
@@ -166,9 +158,6 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query);
-        if (query.plus_words.empty() and !query.minus_words.empty()) {
-            throw invalid_argument("A query cannot consist solely of negative words");
-        }
 
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -180,10 +169,6 @@ public:
             }
         }
         for (const string& word : query.minus_words) {
-
-            if ((word[0] == '-') || (word.empty())) {
-                throw invalid_argument("Problem with the number of dashes in the query");
-            }
 
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
@@ -248,8 +233,7 @@ private:
 
 
     QueryWord ParseQueryWord(string text) const {
-        if (!IsValidWord(text))
-            throw invalid_argument("Text contains a special character");
+        
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
@@ -268,14 +252,25 @@ private:
         Query query;
         for (const string& word : SplitIntoWords(text)) {
             const QueryWord query_word = ParseQueryWord(word);
+
+            if (!IsValidWord(word))
+                throw invalid_argument("Text contains a special character");
+
             if (!query_word.is_stop) {
+
                 if (query_word.is_minus) {
+                    if ((query_word.data[0] == '-') || (query_word.data.empty())) {
+                        throw invalid_argument("Problem with the number of dashes in the query");
+                    }
                     query.minus_words.insert(query_word.data);
                 }
                 else {
                     query.plus_words.insert(query_word.data);
                 }
             }
+        }
+        if (query.plus_words.empty() and !query.minus_words.empty()) {
+            throw invalid_argument("A query cannot consist solely of negative words");
         }
         return query;
     }
