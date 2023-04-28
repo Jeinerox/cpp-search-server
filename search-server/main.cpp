@@ -233,12 +233,16 @@ private:
 
 
     QueryWord ParseQueryWord(string text) const {
-        
+        if (!IsValidWord(text))
+            throw invalid_argument("Text contains a special character"); //лучше ли если я проверку на невалидные символы засуну сюда? 
+ 
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
             is_minus = true;
             text = text.substr(1);
+            if ((text[0] == '-') || (text.empty()))
+                throw invalid_argument("Problem with the number of dashes in the query");
         }
         return { text, is_minus, IsStopWord(text) };
     }
@@ -251,17 +255,15 @@ private:
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
+  
+            //if (!IsValidWord(word))
+            //    throw invalid_argument("Text contains a special character");
+            
             const QueryWord query_word = ParseQueryWord(word);
-
-            if (!IsValidWord(word))
-                throw invalid_argument("Text contains a special character");
 
             if (!query_word.is_stop) {
 
                 if (query_word.is_minus) {
-                    if ((query_word.data[0] == '-') || (query_word.data.empty())) {
-                        throw invalid_argument("Problem with the number of dashes in the query");
-                    }
                     query.minus_words.insert(query_word.data);
                 }
                 else {
