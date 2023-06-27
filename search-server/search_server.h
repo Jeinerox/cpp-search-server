@@ -7,6 +7,7 @@
 #include <map>
 #include <algorithm>
 #include <stdexcept>
+#include "log_duration.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -82,8 +83,6 @@ private:
 
 
 
-
-
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
@@ -96,6 +95,7 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query,
     DocumentPredicate document_predicate) const {
+    LOG_DURATION("Operation time");
     const auto query = ParseQuery(raw_query);
 
     auto matched_documents = FindAllDocuments(query, document_predicate);

@@ -38,6 +38,7 @@ int SearchServer::GetDocumentId(int index) const {
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
     int document_id) const {
+    LOG_DURATION("Operation time");
     const auto query = ParseQuery(raw_query);
 
     std::vector<std::string> matched_words;
@@ -129,4 +130,10 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {
         }
     }
     return result;
+}
+
+// Existence required
+
+inline double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
+    return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
 }
