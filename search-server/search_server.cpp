@@ -47,10 +47,6 @@ int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-//я не очень понимаю, зачем GetWordFrequencies возвращает именно константную ссылку, а не просто копию. 
-//То есть мы должны возвращать ссылку на уже существующий где-то map<string, double>, а переделывать 
-//word_to_document_freqs_ значит переделывать весь класс и нарушить концепцию поиска по словам, 
-//по сути вернуть предыдущую версию поисковика
 
 const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const
 {
