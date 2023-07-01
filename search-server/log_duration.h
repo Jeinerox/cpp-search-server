@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    const std::ostream& stream_;
     const std::string id_;
+    const std::ostream& stream_;
     const Clock::time_point start_time_ = Clock::now();
 };

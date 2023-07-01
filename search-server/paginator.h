@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <iostream>
 
 template <typename Iterator>
 class IteratorRange {
@@ -19,7 +20,7 @@ private:
 public:
     Paginator(Iterator begin, Iterator end, size_t page_size) {
         for (auto it = begin; it != end; ) {
-            size_t current_page_size = min(page_size, static_cast<size_t>(distance(it, end)));
+            size_t current_page_size = std::min(page_size, static_cast<size_t>(distance(it, end)));
             Iterator page_end = next(it, current_page_size);
             pages.push_back({ it, page_end });
             it = page_end;
@@ -32,4 +33,13 @@ public:
 template <typename Container>
 auto Paginate(const Container& c, size_t page_size) {
     return Paginator(begin(c), end(c), page_size);
+}
+
+
+template <typename Iterator>
+std::ostream& operator<<(std::ostream& output, IteratorRange<Iterator> page) {
+    for (auto it = page.begin(); it < page.end(); ++it) {
+        output << *it;
+    }
+    return output;
 }

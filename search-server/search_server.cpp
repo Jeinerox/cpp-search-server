@@ -1,5 +1,6 @@
 
 #include "search_server.h"
+#include "cmath"
 
 //public
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status,
@@ -12,9 +13,23 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
     const double inv_word_count = 1.0 / words.size();
     for (const std::string& word : words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
+        document_to_word_freqs_[document_id][word] += inv_word_count;
     }
     documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
     document_ids_.push_back(document_id);
+}
+
+void SearchServer::RemoveDocument(int document_id)
+{
+    if (documents_.count(document_id) == 0) {
+        return;
+    }
+    for (auto& [word, freq] : word_to_document_freqs_) {
+        freq.erase(document_id);
+    }
+    document_to_word_freqs_.erase(document_id);
+    documents_.erase(document_id);
+    document_ids_.erase(std::find(document_ids_.begin(), document_ids_.end(), document_id));
 }
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -32,9 +47,29 @@ int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-int SearchServer::GetDocumentId(int index) const {
-    return document_ids_.at(index);
+//я не очень понимаю, зачем GetWordFrequencies возвращает именно константную ссылку, а не просто копию. 
+//То есть мы должны возвращать ссылку на уже существующий где-то map<string, double>, а переделывать 
+//word_to_document_freqs_ значит переделывать весь класс и нарушить концепцию поиска по словам, 
+//по сути вернуть предыдущую версию поисковика
+
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const
+{
+    static std::map<std::string, double> emptyMap;
+    return document_to_word_freqs_.at(document_id);
 }
+
+
+
+std::vector<int>::const_iterator SearchServer::begin()
+{
+    return document_ids_.begin();
+}
+
+std::vector<int>::const_iterator SearchServer::end()
+{
+    return document_ids_.end();
+}
+
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
     int document_id) const {
@@ -134,6 +169,9 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {
 
 // Existence required
 
-inline double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
-    return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
+double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const {
+    return std::log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
 }
+
+
+
