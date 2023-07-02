@@ -12,6 +12,11 @@ using namespace std;
 int main() {
     SearchServer search_server("and with"s);
 
+    for (int i = 100; i < 1000; i++)
+    {
+        search_server.AddDocument(i, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+    }
+
     search_server.AddDocument(1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     search_server.AddDocument(2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
 
@@ -36,7 +41,10 @@ int main() {
     // слова из разных документов, не является дубликатом
     search_server.AddDocument(9, "nasty rat with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
 
-    cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl;
-    RemoveDuplicates(search_server);
+    cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl; 
+    {
+        LOG_DURATION("new remove");
+        RemoveDuplicates(search_server);
+    }
     cout << "After duplicates removed: "s << search_server.GetDocumentCount() << endl;
 }

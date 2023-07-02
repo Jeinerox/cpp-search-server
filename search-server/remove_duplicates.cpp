@@ -1,47 +1,37 @@
 #include "remove_duplicates.h"
-
-void RemoveDuplicates(SearchServer& search_server) {
-
-    auto IsInVector = [](const std::vector<int>& vec, int id) {
-        return std::find(vec.begin(), vec.end(), id) != vec.end();
-    };
+#include <map>
+#include <set>
 
 
-    std::vector<int> ids_to_remove;
-    for (const int document_id_1 : search_server) {
-        const auto words_1 = search_server.GetWordFrequencies(document_id_1);
-
-        for (const int document_id_2 : search_server) {
-            if (document_id_1 == document_id_2 or IsInVector(ids_to_remove, document_id_1) or IsInVector(ids_to_remove, document_id_2)) {
-                continue;
-            }
 
 
-            const auto words_2 = search_server.GetWordFrequencies(document_id_2);
-            if (words_1.size() != words_2.size()) {
-                continue;
-            }
 
-            auto it1 = words_1.begin();
-            auto it2 = words_2.begin();
+void RemoveDuplicates(SearchServer& search_server) { //эта реализация оказалась в 45 раз быстрее))
+	std::set<std::set<std::string>> documents;
+	std::vector<int> ids_to_remove;
 
-            while (it1 != words_1.end()) {
-                if ((*it1).first != (*it2).first) {
-                    break;
-                }
-                ++it1;
-                ++it2;
-            }
-            if (it1 != words_1.end()) {
-                continue;
-            }
-            int id_to_remove = std::max(document_id_1, document_id_2);
-            ids_to_remove.push_back(id_to_remove);
-            std::cout << "Found duplicate document id " << id_to_remove << std::endl;
-        }
-    }
-    for (const int id : ids_to_remove) {
-        search_server.RemoveDocument(id);
-    }
+	auto MapToSet = [](std::map<std::string, double> words_freq){ //нужно чтобы игнорировать частоты
+		std::set<std::string> out;
+		for (const auto& word_freq : words_freq){
+			out.insert(word_freq.first);
+		}
+		return out;
+	};
+	
+	for (const int document_id : search_server) {
+		std::set<std::string> words = MapToSet(search_server.GetWordFrequencies(document_id));
+		if (documents.count(words)) {
+			ids_to_remove.push_back(document_id);
+			std::cout << "Found duplicate document id " << document_id << std::endl;
+		}
+		else
+			documents.insert(words);
+	}
+
+	for (const int id : ids_to_remove) {
+		search_server.RemoveDocument(id);
+	}
 
 }
+
+
